@@ -29,14 +29,16 @@ def fetch_http(url: str, user_agent: str, timeout_s: float = 20.0) -> FetchResul
             rendered=False,
         )
 
-def fetch_browser(url: str, user_agent: str, timeout_ms: int = 30000) -> FetchResult:
+def fetch_browser(url: str, user_agent: str, timeout_ms: int = 15000) -> FetchResult:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         ctx = browser.new_context(user_agent=user_agent)
         page = ctx.new_page()
 
         start = time.perf_counter()
-        resp = page.goto(url, wait_until="load", timeout=timeout_ms)
+        # "domcontentloaded" is usually enough for SEO extraction and avoids waiting
+        # on slow third-party assets that can make "load" appear hung.
+        resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
         full_load_ms = (time.perf_counter() - start) * 1000.0
 
         html = page.content()
