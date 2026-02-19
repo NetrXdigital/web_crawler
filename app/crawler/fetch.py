@@ -36,9 +36,15 @@ def fetch_browser(url: str, user_agent: str, timeout_ms: int = 15000) -> FetchRe
         page = ctx.new_page()
 
         start = time.perf_counter()
-        # "domcontentloaded" is usually enough for SEO extraction and avoids waiting
-        # on slow third-party assets that can make "load" appear hung.
+        # Start early, then wait briefly for API-driven content to hydrate.
         resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+        try:
+            page.wait_for_load_state("networkidle", timeout=min(5000, timeout_ms))
+        except Exception:
+            # Some sites keep long-lived network connections; ignore and continue.
+            pass
+        # Give the UI a short settle window for late DOM updates.
+        page.wait_for_timeout(800)
         full_load_ms = (time.perf_counter() - start) * 1000.0
 
         html = page.content()

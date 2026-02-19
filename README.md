@@ -44,6 +44,10 @@ For every URL in the crawl queue:
    - headings (`h1`, `h1_all`, `h2_all`, `h3_all`)
    - word count
 5. Persist one `crawled_pages` row in Postgres.
+   - `extraction_source` indicates which content source was used:
+     - `browser`: JS-rendered DOM
+     - `http`: raw HTTP HTML
+     - `none`: no usable HTML fetched
 6. Discover links from HTML and enqueue unseen links.
 
 Resilience behavior:
@@ -59,6 +63,7 @@ From current config:
 - `MAX_PAGES=5000`
 - `MAX_DEPTH=5`
 - `MAX_MINUTES=60` (job-level crawl deadline)
+- `CELERY_TASK_SOFT_TIME_LIMIT=3540` seconds (task catches timeout and writes DB error)
 - `CELERY_TASK_TIME_LIMIT=3600` seconds (hard kill by Celery)
 - `BROWSER_TIMEOUT_MS=15000` (Playwright per URL)
 - HTTP fetch timeout is 20 seconds per URL (code default).

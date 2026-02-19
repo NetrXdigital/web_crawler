@@ -37,6 +37,11 @@ def _startup():
         raise RuntimeError("Database not ready after 30 seconds")
 
     Base.metadata.create_all(bind=engine)
+    # Keep schema backwards-compatible for existing DB volumes without migrations.
+    with engine.begin() as conn:
+        conn.execute(
+            text("ALTER TABLE crawled_pages ADD COLUMN IF NOT EXISTS extraction_source VARCHAR(32)")
+        )
     logger.info("Database metadata ensured")
 
 @app.post("/jobs", response_model=JobOut)
@@ -100,6 +105,7 @@ def list_pages(job_id: int, db: Session = Depends(get_db)):
             ttfb_ms=p.ttfb_ms,
             full_load_ms=p.full_load_ms,
             rendered=p.rendered,
+            extraction_source=p.extraction_source,
         )
         for p in pages
     ]

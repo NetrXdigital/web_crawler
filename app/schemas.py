@@ -39,3 +39,4 @@ class PageOut(BaseModel):
     ttfb_ms: Optional[float] = None
     full_load_ms: Optional[float] = None
     rendered: bool
+    extraction_source: Optional[str] = None

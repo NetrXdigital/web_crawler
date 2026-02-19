@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 
 def _get_meta_content(soup: BeautifulSoup, name: str) -> str | None:
-    tag = soup.find("meta", attrs={"name": name})
+    # Support both classic SEO tags (`name=...`) and OpenGraph (`property=...`).
+    tag = soup.find("meta", attrs={"name": name}) or soup.find("meta", attrs={"property": name})
     if tag and tag.get("content"):
         return tag["content"].strip()
     return None
@@ -26,7 +27,7 @@ def extract_seo_fields(html: str) -> dict:
 
     title = soup.title.get_text(strip=True) if soup.title else None
 
-    meta_description = _get_meta_content(soup, "description")
+    meta_description = _get_meta_content(soup, "description") or _get_meta_content(soup, "og:description")
     meta_keywords = _get_meta_content(soup, "keywords")
     robots_meta = _get_meta_content(soup, "robots")
 

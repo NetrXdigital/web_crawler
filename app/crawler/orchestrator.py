@@ -116,6 +116,7 @@ def crawl_site(db: Session, job: CrawlJob) -> None:
 
         # fetch
         rendered = False
+        extraction_source = "none"
         ttfb_ms = None
         full_load_ms = None
         final_url = None
@@ -131,6 +132,7 @@ def crawl_site(db: Session, job: CrawlJob) -> None:
                 final_url = r.final_url
                 status_code = r.status_code
                 html = r.html
+                extraction_source = "http"
                 logger.debug(
                     "HTTP fetch complete",
                     extra={
@@ -155,6 +157,7 @@ def crawl_site(db: Session, job: CrawlJob) -> None:
                     final_url = br.final_url
                     status_code = br.status_code
                     html = br.html
+                    extraction_source = "browser"
                     logger.debug(
                         "Browser fetch complete",
                         extra={
@@ -199,6 +202,7 @@ def crawl_site(db: Session, job: CrawlJob) -> None:
             ttfb_ms=ttfb_ms,
             full_load_ms=full_load_ms,
             rendered=rendered,
+            extraction_source=extraction_source,
         )
         try:
             db.add(page)

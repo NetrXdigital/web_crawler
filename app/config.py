@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     MAX_PAGES: int = 5000
     MAX_DEPTH: int = 5
     MAX_MINUTES: int = 60
+    CELERY_TASK_SOFT_TIME_LIMIT: int = 3540
     CELERY_TASK_TIME_LIMIT: int = 3600
 
     RENDER_MODE: str = "hybrid"  # hybrid | http | browser

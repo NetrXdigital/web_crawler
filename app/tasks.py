@@ -1,12 +1,14 @@
 from celery import Celery
 from celery.signals import worker_ready
+from celery.exceptions import SoftTimeLimitExceeded
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import update
+from sqlalchemy import text
 import logging
 
 from app.config import settings
-from app.db import SessionLocal
+from app.db import SessionLocal, engine
 from app.models import CrawlJob, JobStatus
 from app.crawler.orchestrator import crawl_site
 from app.logging_config import configure_logging
@@ -14,6 +16,7 @@ from app.logging_config import configure_logging
 celery_app = Celery("netrx_audit", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 celery_app.conf.update(
     worker_hijack_root_logger=False,
+    task_soft_time_limit=settings.CELERY_TASK_SOFT_TIME_LIMIT,
     task_time_limit=settings.CELERY_TASK_TIME_LIMIT,
 )
 
@@ -24,6 +27,11 @@ logger = logging.getLogger(__name__)
 @worker_ready.connect
 def mark_stale_running_jobs_failed(sender=None, **kwargs) -> None:
     """Recover jobs left in running state after worker/container interruptions."""
+    with engine.begin() as conn:
+        conn.execute(
+            text("ALTER TABLE crawled_pages ADD COLUMN IF NOT EXISTS extraction_source VARCHAR(32)")
+        )
+
     db: Session = SessionLocal()
     try:
         now = datetime.utcnow()
@@ -70,6 +78,18 @@ def run_crawl_job(job_id: int) -> None:
         job.finished_at = datetime.utcnow()
         db.commit()
         logger.info("Crawl job completed", extra={"job_id": job_id})
+    except SoftTimeLimitExceeded:
+        logger.exception("Crawl job exceeded Celery soft time limit", extra={"job_id": job_id})
+        job = db.get(CrawlJob, job_id)
+        if job:
+            job.status = JobStatus.failed
+            job.error = (
+                f"Celery soft time limit exceeded "
+                f"({settings.CELERY_TASK_SOFT_TIME_LIMIT}s)"
+            )
+            job.finished_at = datetime.utcnow()
+            db.commit()
+        raise
     except Exception as e:
         logger.exception("Crawl job failed", extra={"job_id": job_id})
         job = db.get(CrawlJob, job_id)

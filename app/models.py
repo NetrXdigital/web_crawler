@@ -57,6 +57,7 @@ class CrawledPage(Base):
     full_load_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     rendered: Mapped[bool] = mapped_column(Boolean, default=False)
+    extraction_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
